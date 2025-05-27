@@ -70,7 +70,6 @@ impl AtrainBuilder {
         };
 
         // Check whether Autoscan is available.
-        a_train.autoscan.available().await?;
         Ok(a_train)
     }
 }

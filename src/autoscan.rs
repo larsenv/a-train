@@ -142,7 +142,7 @@ pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
     for path in changed_paths {
         match path {
             ChangedPath::Created(path) => match path {
-                Path::File(mut file) => {
+                Path::File(file) => {
                     // We're only interested in folders.
                     // Thus we pop the file and retrieve the parent instead.
                     payload.created.insert(file.path);
@@ -159,7 +159,7 @@ pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
                 }
 
                 match path {
-                    Path::File(mut file) => {
+                    Path::File(file) => {
                         // We're only interested in folders.
                         // Thus we pop the file and retrieve the parent instead.
                         payload.deleted.insert(file.path);
@@ -182,29 +182,33 @@ impl Autoscan {
         _drive_id: &str,
         payload: &Payload,
     ) -> Result<(), AutoscanError> {
-        // Helper to send GET request with path and optional hash
-        async fn send_manual_trigger(
-            client: &Client,
-            base_url: &Url,
+        async fn send_trigger_manual(
+            autoscan: &Autoscan,
             path: &PathBuf,
         ) -> Result<(), AutoscanError> {
-            let mut url = base_url.clone();
+            let mut url = autoscan.url.clone();
             url.set_path("/triggers/manual");
 
-            url.query_pairs_mut().append_pair("path", &path.display().to_string());
+            // Add query parameters
+            {
+                let mut query = url.query_pairs_mut();
+                query.append_pair("path", &path.display().to_string());
+            }
 
-            // Optional: if you have logic to include a hash, do it here:
-            // url.query_pairs_mut().append_pair("hash", "...");
+            // Build the request and attach auth if provided
+            let mut request = autoscan.client.get(url);
+            if let Some(auth) = &autoscan.auth {
+                request = request.basic_auth(&auth.username, Some(&auth.password));
+            }
 
-            let request = client.get(url);
-            request.svc_send(client).await?.error_for_status()?;
+            request.svc_send(autoscan).await?.error_for_status()?;
             Ok(())
         }
 
         let mut tasks = Vec::new();
 
         for path in &payload.created {
-            tasks.push(send_manual_trigger(&self.client, &self.url, path));
+            tasks.push(send_trigger_manual(self, path));
         }
 
         // Run all requests concurrently

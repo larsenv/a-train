@@ -146,11 +146,11 @@ pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
                     // We're only interested in folders.
                     // Thus we pop the file and retrieve the parent instead.
                     let full_path = format!("/media/sdc1/hydrobleach/Media/{}", file.path.display());
-                    payload.created.insert(file.path);
+                    payload.created.insert(full_path.into());
                 }
                 Path::Folder(folder) => {
                     let full_path = format!("/media/sdc1/hydrobleach/Media/{}", folder.path.display());
-                    payload.created.insert(folder.path);
+                    payload.created.insert(full_path.into());
                 }
             },
             ChangedPath::Deleted(path) => {
@@ -163,11 +163,11 @@ pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
                 match path {
                     Path::File(file) => {
                         let full_path = format!("/media/sdc1/hydrobleach/Media/{}", file.path.display());
-                        payload.deleted.insert(file.path);
+                        payload.deleted.insert(full_path.into());
                     }
                     Path::Folder(folder) => {
                         let full_path = format!("/media/sdc1/hydrobleach/Media/{}", folder.path.display());
-                        payload.deleted.insert(folder.path);
+                        payload.deleted.insert(full_path.into());
                     }
                 }
             }

@@ -145,7 +145,6 @@ pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
                 Path::File(mut file) => {
                     // We're only interested in folders.
                     // Thus we pop the file and retrieve the parent instead.
-                    file.path.pop();
                     payload.created.insert(file.path);
                 }
                 Path::Folder(folder) => {
@@ -163,7 +162,6 @@ pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
                     Path::File(mut file) => {
                         // We're only interested in folders.
                         // Thus we pop the file and retrieve the parent instead.
-                        file.path.pop();
                         payload.deleted.insert(file.path);
                     }
                     Path::Folder(folder) => {
@@ -178,36 +176,43 @@ pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
 }
 
 impl Autoscan {
-    pub(crate) async fn available(&self) -> Result<(), AutoscanError> {
-        let mut url = self.url.clone();
-        url.set_path("/health");
-
-        self.client
-            .get(url)
-            .svc_send(&self)
-            .await?
-            .error_for_status()?;
-
-        Ok(())
-    }
-
     #[tracing::instrument(skip(self, payload))]
     pub(crate) async fn send_payload(
         &self,
-        drive_id: &str,
+        _drive_id: &str,
         payload: &Payload,
     ) -> Result<(), AutoscanError> {
-        let mut url = self.url.clone();
-        url.set_path(&format!("/triggers/a-train/{}", drive_id));
+        // Helper to send GET request with path and optional hash
+        async fn send_manual_trigger(
+            client: &Client,
+            base_url: &Url,
+            path: &PathBuf,
+        ) -> Result<(), AutoscanError> {
+            let mut url = base_url.clone();
+            url.set_path("/triggers/manual");
 
-        let mut request = self.client.post(url).json(&payload);
-        if let Some(auth) = &self.auth {
-            request = request.basic_auth(&auth.username, Some(&auth.password));
+            url.query_pairs_mut().append_pair("path", &path.display().to_string());
+
+            // Optional: if you have logic to include a hash, do it here:
+            // url.query_pairs_mut().append_pair("hash", "...");
+
+            let request = client.get(url);
+            request.svc_send(client).await?.error_for_status()?;
+            Ok(())
         }
 
-        request.svc_send(&self).await?.error_for_status()?;
-        debug!("changes received by autoscan");
+        let mut tasks = Vec::new();
 
+        for path in &payload.created {
+            tasks.push(send_manual_trigger(&self.client, &self.url, path));
+        }
+
+        // Run all requests concurrently
+        for task in tasks {
+            task.await?;
+        }
+
+        debug!("all file changes sent via manual triggers");
         Ok(())
     }
 }

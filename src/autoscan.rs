@@ -136,7 +136,7 @@ impl Payload {
     }
 }
 
-use std::path::{Path as StdPath, PathBuf};
+use std::path::Path as StdPath;
 
 pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
     let mut payload = Payload::default();

@@ -139,36 +139,33 @@ impl Payload {
 pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
     let mut payload = Payload::default();
 
-    // Paths to ignore, normalized without trailing slash
-    let ignored_dirs = vec![
-        "/media/sdc1/hydrobleach/Media/Books",
-        "/media/sdc1/hydrobleach/Media/Music",
-        "/media/sdc1/hydrobleach/Media/Movies",
-        "/media/sdc1/hydrobleach/Media/TV Shows",
-    ];
+    // Canonical ignored directories as PathBuf
+    let ignored_dirs: Vec<PathBuf> = vec![
+        "Books",
+        "Music",
+        "Movies",
+        "TV Shows",
+    ]
+    .into_iter()
+    .map(|d| Path::new("/media/sdc1/hydrobleach/Media").join(d))
+    .collect();
 
     for path in changed_paths {
         match path {
             ChangedPath::Created(path) => match path {
                 Path::File(file) => {
-                    let full_path = format!("/media/sdc1/hydrobleach/Media/{}", file.path.display());
-                    let normalized = full_path.trim_end_matches('/');
-
-                    if ignored_dirs.contains(&normalized) {
+                    let full_path = Path::new("/media/sdc1/hydrobleach/Media").join(&file.path);
+                    if ignored_dirs.contains(&full_path) {
                         continue;
                     }
-
-                    payload.created.insert(full_path.into());
+                    payload.created.insert(full_path.display().to_string().into());
                 }
                 Path::Folder(folder) => {
-                    let full_path = format!("/media/sdc1/hydrobleach/Media/{}", folder.path.display());
-                    let normalized = full_path.trim_end_matches('/');
-
-                    if ignored_dirs.contains(&normalized) {
+                    let full_path = Path::new("/media/sdc1/hydrobleach/Media").join(&folder.path);
+                    if ignored_dirs.contains(&full_path) {
                         continue;
                     }
-
-                    payload.created.insert(full_path.into());
+                    payload.created.insert(full_path.display().to_string().into());
                 }
             },
             ChangedPath::Deleted(path) => {
@@ -178,24 +175,18 @@ pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
 
                 match path {
                     Path::File(file) => {
-                        let full_path = format!("/media/sdc1/hydrobleach/Media/{}", file.path.display());
-                        let normalized = full_path.trim_end_matches('/');
-
-                        if ignored_dirs.contains(&normalized) {
+                        let full_path = Path::new("/media/sdc1/hydrobleach/Media").join(&file.path);
+                        if ignored_dirs.contains(&full_path) {
                             continue;
                         }
-
-                        payload.deleted.insert(full_path.into());
+                        payload.deleted.insert(full_path.display().to_string().into());
                     }
                     Path::Folder(folder) => {
-                        let full_path = format!("/media/sdc1/hydrobleach/Media/{}", folder.path.display());
-                        let normalized = full_path.trim_end_matches('/');
-
-                        if ignored_dirs.contains(&normalized) {
+                        let full_path = Path::new("/media/sdc1/hydrobleach/Media").join(&folder.path);
+                        if ignored_dirs.contains(&full_path) {
                             continue;
                         }
-
-                        payload.deleted.insert(full_path.into());
+                        payload.deleted.insert(full_path.display().to_string().into());
                     }
                 }
             }

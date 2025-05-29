@@ -136,31 +136,34 @@ impl Payload {
     }
 }
 
-pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
-    use std::path as std_path;
+use std::path::{Path as StdPath, PathBuf};
 
-    let ignored_dirs: Vec<std_path::PathBuf> = vec![
+pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
+    let mut payload = Payload::default();
+
+    // Canonical ignored directories
+    let ignored_dirs: Vec<PathBuf> = vec![
         "Books",
         "Music",
         "Movies",
         "TV Shows",
     ]
     .into_iter()
-    .map(|d| std_path::Path::new("/media/sdc1/hydrobleach/Media").join(d))
+    .map(|d| StdPath::new("/media/sdc1/hydrobleach/Media").join(d))
     .collect();
 
     for path in changed_paths {
         match path {
             ChangedPath::Created(path) => match path {
                 Path::File(file) => {
-                    let full_path = std_path::Path::new("/media/sdc1/hydrobleach/Media").join(&file.path);
+                    let full_path = StdPath::new("/media/sdc1/hydrobleach/Media").join(&file.path);
                     if ignored_dirs.contains(&full_path) {
                         continue;
                     }
                     payload.created.insert(full_path.display().to_string().into());
                 }
                 Path::Folder(folder) => {
-                    let full_path = std_path::Path::new("/media/sdc1/hydrobleach/Media").join(&file.path);
+                    let full_path = StdPath::new("/media/sdc1/hydrobleach/Media").join(&folder.path);
                     if ignored_dirs.contains(&full_path) {
                         continue;
                     }
@@ -174,14 +177,14 @@ pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
 
                 match path {
                     Path::File(file) => {
-                        let full_path = std_path::Path::new("/media/sdc1/hydrobleach/Media").join(&file.path);
+                        let full_path = StdPath::new("/media/sdc1/hydrobleach/Media").join(&file.path);
                         if ignored_dirs.contains(&full_path) {
                             continue;
                         }
                         payload.deleted.insert(full_path.display().to_string().into());
                     }
                     Path::Folder(folder) => {
-                        let full_path = std_path::Path::new("/media/sdc1/hydrobleach/Media").join(&file.path);
+                        let full_path = StdPath::new("/media/sdc1/hydrobleach/Media").join(&folder.path);
                         if ignored_dirs.contains(&full_path) {
                             continue;
                         }

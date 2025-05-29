@@ -153,14 +153,14 @@ pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
         match path {
             ChangedPath::Created(path) => match path {
                 Path::File(file) => {
-                    let full_path = Path::new("/media/sdc1/hydrobleach/Media").join(&file.path);
+                    let full_path = std_path::Path::new("/media/sdc1/hydrobleach/Media").join(&file.path);
                     if ignored_dirs.contains(&full_path) {
                         continue;
                     }
                     payload.created.insert(full_path.display().to_string().into());
                 }
                 Path::Folder(folder) => {
-                    let full_path = Path::new("/media/sdc1/hydrobleach/Media").join(&folder.path);
+                    let full_path = std_path::Path::new("/media/sdc1/hydrobleach/Media").join(&file.path);
                     if ignored_dirs.contains(&full_path) {
                         continue;
                     }

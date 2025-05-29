@@ -137,17 +137,16 @@ impl Payload {
 }
 
 pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
-    let mut payload = Payload::default();
+    use std::path as std_path;
 
-    // Canonical ignored directories as PathBuf
-    let ignored_dirs: Vec<PathBuf> = vec![
+    let ignored_dirs: Vec<std_path::PathBuf> = vec![
         "Books",
         "Music",
         "Movies",
         "TV Shows",
     ]
     .into_iter()
-    .map(|d| Path::new("/media/sdc1/hydrobleach/Media").join(d))
+    .map(|d| std_path::Path::new("/media/sdc1/hydrobleach/Media").join(d))
     .collect();
 
     for path in changed_paths {

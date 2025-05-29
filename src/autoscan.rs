@@ -139,23 +139,39 @@ impl Payload {
 pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
     let mut payload = Payload::default();
 
+    // Paths to ignore, normalized without trailing slash
+    let ignored_dirs = vec![
+        "/media/sdc1/hydrobleach/Media/Books",
+        "/media/sdc1/hydrobleach/Media/Music",
+        "/media/sdc1/hydrobleach/Media/Movies",
+        "/media/sdc1/hydrobleach/Media/TV Shows",
+    ];
+
     for path in changed_paths {
         match path {
             ChangedPath::Created(path) => match path {
                 Path::File(file) => {
-                    // We're only interested in folders.
-                    // Thus we pop the file and retrieve the parent instead.
                     let full_path = format!("/media/sdc1/hydrobleach/Media/{}", file.path.display());
+                    let normalized = full_path.trim_end_matches('/');
+
+                    if ignored_dirs.contains(&normalized) {
+                        continue;
+                    }
+
                     payload.created.insert(full_path.into());
                 }
                 Path::Folder(folder) => {
                     let full_path = format!("/media/sdc1/hydrobleach/Media/{}", folder.path.display());
+                    let normalized = full_path.trim_end_matches('/');
+
+                    if ignored_dirs.contains(&normalized) {
+                        continue;
+                    }
+
                     payload.created.insert(full_path.into());
                 }
             },
             ChangedPath::Deleted(path) => {
-                // Do not send this path to Autoscan
-                // if the trash of a Drive is deleted permanently.
                 if path.trashed() {
                     continue;
                 }
@@ -163,10 +179,22 @@ pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
                 match path {
                     Path::File(file) => {
                         let full_path = format!("/media/sdc1/hydrobleach/Media/{}", file.path.display());
+                        let normalized = full_path.trim_end_matches('/');
+
+                        if ignored_dirs.contains(&normalized) {
+                            continue;
+                        }
+
                         payload.deleted.insert(full_path.into());
                     }
                     Path::Folder(folder) => {
                         let full_path = format!("/media/sdc1/hydrobleach/Media/{}", folder.path.display());
+                        let normalized = full_path.trim_end_matches('/');
+
+                        if ignored_dirs.contains(&normalized) {
+                            continue;
+                        }
+
                         payload.deleted.insert(full_path.into());
                     }
                 }

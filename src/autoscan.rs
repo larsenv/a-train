@@ -197,7 +197,7 @@ impl Autoscan {
         payload: &Payload,
     ) -> Result<(), AutoscanError> {
         let mut url = self.url.clone();
-        url.set_path(&format!("/triggers/a-train/{}", drive_id));
+        url.set_path(&format!("/triggers/atrain/{}", drive_id));
 
         let mut request = self.client.post(url).json(&payload);
         if let Some(auth) = &self.auth {

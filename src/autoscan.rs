@@ -136,59 +136,38 @@ impl Payload {
     }
 }
 
-use std::path::Path as StdPath;
-
 pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
     let mut payload = Payload::default();
-
-    // Canonical ignored directories
-    let ignored_dirs: Vec<PathBuf> = vec![
-        "Books",
-        "Music",
-        "Movies",
-        "TV Shows",
-    ]
-    .into_iter()
-    .map(|d| StdPath::new("/media/sdc1/hydrobleach/Media").join(d))
-    .collect();
 
     for path in changed_paths {
         match path {
             ChangedPath::Created(path) => match path {
-                Path::File(file) => {
-                    let full_path = StdPath::new("/media/sdc1/hydrobleach/Media").join(&file.path);
-                    if ignored_dirs.contains(&full_path) {
-                        continue;
-                    }
-                    payload.created.insert(full_path.display().to_string().into());
+                Path::File(mut file) => {
+                    // We're only interested in folders.
+                    // Thus we pop the file and retrieve the parent instead.
+                    file.path.pop();
+                    payload.created.insert(file.path);
                 }
                 Path::Folder(folder) => {
-                    let full_path = StdPath::new("/media/sdc1/hydrobleach/Media").join(&folder.path);
-                    if ignored_dirs.contains(&full_path) {
-                        continue;
-                    }
-                    payload.created.insert(full_path.display().to_string().into());
+                    payload.created.insert(folder.path);
                 }
             },
             ChangedPath::Deleted(path) => {
+                // Do not send this path to Autoscan
+                // if the trash of a Drive is deleted permanently.
                 if path.trashed() {
                     continue;
                 }
 
                 match path {
-                    Path::File(file) => {
-                        let full_path = StdPath::new("/media/sdc1/hydrobleach/Media").join(&file.path);
-                        if ignored_dirs.contains(&full_path) {
-                            continue;
-                        }
-                        payload.deleted.insert(full_path.display().to_string().into());
+                    Path::File(mut file) => {
+                        // We're only interested in folders.
+                        // Thus we pop the file and retrieve the parent instead.
+                        file.path.pop();
+                        payload.deleted.insert(file.path);
                     }
                     Path::Folder(folder) => {
-                        let full_path = StdPath::new("/media/sdc1/hydrobleach/Media").join(&folder.path);
-                        if ignored_dirs.contains(&full_path) {
-                            continue;
-                        }
-                        payload.deleted.insert(full_path.display().to_string().into());
+                        payload.deleted.insert(folder.path);
                     }
                 }
             }
@@ -199,47 +178,35 @@ pub(crate) fn create_payload(changed_paths: Vec<ChangedPath>) -> Payload {
 }
 
 impl Autoscan {
+    pub(crate) async fn available(&self) -> Result<(), AutoscanError> {
+        let mut url = self.url.clone();
+
+        self.client
+            .get(url)
+            .svc_send(&self)
+            .await?
+            .error_for_status()?;
+
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, payload))]
     pub(crate) async fn send_payload(
         &self,
-        _drive_id: &str,
+        drive_id: &str,
         payload: &Payload,
     ) -> Result<(), AutoscanError> {
-        async fn send_trigger_manual(
-            autoscan: &Autoscan,
-            path: &PathBuf,
-        ) -> Result<(), AutoscanError> {
-            let mut url = autoscan.url.clone();
-            url.set_path("/triggers/manual");
+        let mut url = self.url.clone();
+        url.set_path(&format!("/triggers/a-train/{}", drive_id));
 
-            // Add query parameters
-            {
-                let mut query = url.query_pairs_mut();
-                query.append_pair("path", &path.display().to_string());
-            }
-
-            // Build the request and attach auth if provided
-            let mut request = autoscan.client.get(url);
-            if let Some(auth) = &autoscan.auth {
-                request = request.basic_auth(&auth.username, Some(&auth.password));
-            }
-
-            request.svc_send(autoscan).await?.error_for_status()?;
-            Ok(())
+        let mut request = self.client.post(url).json(&payload);
+        if let Some(auth) = &self.auth {
+            request = request.basic_auth(&auth.username, Some(&auth.password));
         }
 
-        let mut tasks = Vec::new();
+        request.svc_send(&self).await?.error_for_status()?;
+        debug!("changes received by autoscan");
 
-        for path in &payload.created {
-            tasks.push(send_trigger_manual(self, path));
-        }
-
-        // Run all requests concurrently
-        for task in tasks {
-            task.await?;
-        }
-
-        debug!("all file changes sent via manual triggers");
         Ok(())
     }
 }

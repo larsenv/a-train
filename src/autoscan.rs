@@ -266,7 +266,7 @@ mod tests {
         });
 
         Mock::given(method("POST"))
-            .and(path("/triggers/atrain"))
+            .and(path("/triggers/a-train"))
             .and(body_json(&expected_body))
             .respond_with(ResponseTemplate::new(200))
             .expect(1)

@@ -197,7 +197,7 @@ impl Autoscan {
         payload: &Payload,
     ) -> Result<(), AutoscanError> {
         let mut url = self.url.clone();
-        url.set_path(&format!("/triggers/atrain/{}", drive_id));
+        url.set_path("/triggers/atrain");
 
         let mut request = self.client.post(url).json(&payload);
         if let Some(auth) = &self.auth {
@@ -266,7 +266,7 @@ mod tests {
         });
 
         Mock::given(method("POST"))
-            .and(path("/triggers/a-train/test123"))
+            .and(path("/triggers/atrain"))
             .and(body_json(&expected_body))
             .respond_with(ResponseTemplate::new(200))
             .expect(1)
